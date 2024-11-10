@@ -1,3 +1,4 @@
+from typing import Any
 from dotenv import load_dotenv
 from langchain import hub
 from langchain_openai import ChatOpenAI
@@ -7,6 +8,9 @@ from langchain_experimental.agents import create_csv_agent
 
 load_dotenv()
 
+def agent_executor_wrapper(agent_executor: AgentExecutor, original_prompt: str) -> dict[str, Any]:
+    return agent_executor.invoke({"input": original_prompt}
+                                        )
 def python_qrcode_agent():
     print("Start...")
 
@@ -61,6 +65,51 @@ def python_csv_agent():
         input={
             "input":"print in descending order the result of calculating the unique books for the 'book' column which had the highest mean value for the column 'close' in file 2024-05-02_full_record.csv"
         }
+    )
+
+def python_router_grand_agent():
+
+    tools = [
+        Tool(
+            name="Python Agent",
+            func=python_agent_executor.invoke,
+            description="""useful when you need to transform natural langauge to python and execute the python code.
+                            returning the results of the code execution
+                            DOES NOT ACCEPT CODE AS INPUT""",
+        ),
+        Tool(
+            name="CSV Agent",
+            func=csv_agent_executor.invoke,
+            description="""useful when you need to answer question over 2024-05-02_full_record.csv file,
+                        takes an input the entire question and returns the answer after running pandas calculations""",
+        ),
+    ]
+
+    prompt = base_prompt.partial(instructions="")
+    grand_agent = create_react_agent(
+        prompt=prompt,
+        llm=ChatOpenAI(temperature=0,model="gpt-4-turbo"),
+        tools=tools,
+    )
+
+    grand_agent_executor= AgentExecutor(agent=grand_agent, tools=tools,verbose=True)
+    
+    # print(
+    #     grand_agent_executor.invoke(
+    #         input={
+    #             "input":"""generate and save in current working directory 15 QRcodes
+    #                         that point to www.udemy.com/course/langchain, you have qrcode package installed already"""
+    #         }
+    #     )
+    # )
+
+    print(
+        grand_agent_executor.invoke(
+            input={
+                "input":"""generate and save in current working directory 15 QRcodes
+                            that point to www.udemy.com/course/langchain, you have qrcode package installed already"""
+            }
+        )
     )
 
 def main():
